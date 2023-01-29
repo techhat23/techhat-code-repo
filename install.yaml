@@ -22,4 +22,3 @@
   - name: Adding another debug statement
     debug: msg="We are learning GIT"
 
-
