@@ -1,0 +1,24 @@
+---
+# The variables file used by the playbooks in the webservers group.
+# These don't have to be explicitly imported by vars_files: they are autopopulated.
+
+## OS Packages
+# Installs packages on the webservers group for your OS
+# if you do not want to install the default packages, set webservers_os_packages to an empty object array []
+# webservers_os_packages: []
+webservers_os_extra_packages: []
+
+## geerlingguy.apache role
+# Apache settings are in group_vars/webservers/apache*
+
+## geerlingguy.php role
+# Documentation: https://github.com/geerlingguy/ansible-role-php
+php_packages_extra: []
+
+## geerlingguy.firewall role
+# Documentation: https://github.com/geerlingguy/ansible-role-firewall/blob/master/README.md
+# All Servers have these firewall ports opened, gets merged with firewall ports in other group settings
+webservers_firewall_allowed_tcp_ports:
+  - "25" # Port for incoming mail
+  - "80" # Default web traffic port
+  - "443" # SSL web traffic port

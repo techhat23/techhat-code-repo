@@ -1,0 +1,148 @@
+---
+# This playbook deploys the whole LAMP stack and secures it
+- name: "Initial Local Setup"
+  hosts: all
+  gather_facts: False
+  tasks:
+    - name: "Set SSH Connection Variables on First Run"
+      set_fact:
+        ansible_user: "{{ first_run_remote_user | default('root') }}"
+        ansible_port: "{{ first_run_remote_port | default('22') }}"
+        ansible_become: "{{ first_run_become | default(false) }}"
+      when: "first_run | default(false)"
+      tags: "local::init"
+
+    - name: "Set SSH Connection Variables"
+      set_fact:
+        ansible_user: "{{ remote_user | default('root') }}"
+        ansible_port: "{{ remote_port | default('22') }}"
+        ansible_become: "{{ become | default(false) }}"
+      when: "not (first_run | default(false))"
+      tags: "local::init"
+  
+- name: "Initial Setup of Server Packages"
+  hosts: all
+  roles:
+    - role: "galaxy-roles/linuxhq.epel"
+      epel_repos:
+        epel: True
+      when: "ansible_os_family == 'RedHat'"
+      tags: "epel"
+
+    - role: "galaxy-roles/linuxhq.ius"
+      ius_repos:
+        ius: True
+      epel_repos:
+        epel: True
+      when: "ansible_os_family == 'RedHat' and (ius_or_remi | upper | default('IUS')) == 'IUS'"
+      tags: "ius"
+  
+    - role: "galaxy-roles/ansible-role-repo-remi"
+      when: "ansible_os_family == 'RedHat' and (ius_or_remi | upper | default('IUS')) == 'REMI'"
+      tags: "remi"
+
+    - role: "galaxy-roles/ansible-role-default-packages"
+      os_packages_update: True
+      os_packages: "{{ all_os_packages | default(omit) }}"
+      os_extra_packages: "{{ all_os_extra_packages | default([]) }}"
+      tags: "default_packages"
+
+- name: "Secure Server: Create users, disable root, lock down SSH"
+  hosts: all
+  roles:
+    - role: "galaxy-roles/ansible-users"
+      users_admin_sudo_password: False
+      tags: "users"
+
+    - role: "galaxy-roles/ansible-sshd"
+      tags: "ssh"
+
+- name: "Secure Server: Re-set initial connection variables"
+  hosts: all
+  gather_facts: False
+  tasks:
+    - name: "Set SSH Connection Variables"
+      set_fact:
+        ansible_user: "{{ remote_user | default('root') }}"
+        ansible_port: "{{ remote_port | default('22') }}"
+        ansible_become: "{{ become | default(false) }}"
+      tags: "local::init"
+
+- name: "Secure Server: Lock down firewall"
+  hosts: all
+  pre_tasks:
+    - name: "Merge the Firewall Ports"
+      set_fact:
+        merged_firewall_allowed_tcp_ports: "{{ all_firewall_allowed_tcp_ports | default([]) }}"
+        merged_firewall_additional_rules: "{{ all_firewall_additional_rules | default([]) }}"
+      tags: "firewall"
+
+  roles:
+    - role: "galaxy-roles/ansible-role-firewall"
+      firewall_allowed_tcp_ports: "{{ merged_firewall_allowed_tcp_ports | default([]) | unique }}"
+      firewall_additional_rules: "{{ merged_firewall_additional_rules | default([]) }}"
+      tags: "firewall"
+
+- name: "Configure and deploy the webservers"
+  hosts: webservers
+  
+  pre_tasks:
+    - name: "Merge the Firewall Ports"
+      set_fact:
+        merged_firewall_allowed_tcp_ports: "{{ merged_firewall_allowed_tcp_ports | default([]) }} + {{ webservers_firewall_allowed_tcp_ports | default([]) }}"
+        merged_firewall_additional_rules: "{{ merged_firewall_additional_rules | default([]) }} + {{ webservers_firewall_additional_rules | default([]) }}"
+      tags: "firewall"
+    
+  roles:
+    - role: "galaxy-roles/ansible-role-default-packages"
+      os_packages: "{{ webservers_os_packages | default(omit) }}"
+      os_extra_packages: "{{ webservers_os_extra_packages | default([]) }}"
+      tags: "default_packages"
+    
+    - role: "galaxy-roles/ansible-role-apache"
+      apache_create_vhosts: False
+      apache_state: stopped
+      tags: "apache"
+    
+    - role: "galaxy-roles/ansible-role-php"
+      tags: "php"
+
+    - role: "galaxy-roles/ansible-role-apache"
+      apache_ignore_missing_ssl_certificate: False
+      tags: "apache"
+    
+    - role: "galaxy-roles/ansible-role-firewall"
+      firewall_allowed_tcp_ports: "{{ merged_firewall_allowed_tcp_ports | default([]) | unique }}"
+      firewall_additional_rules: "{{ merged_firewall_additional_rules | default([]) }}"
+      tags: "firewall"
+
+- name: "Configure email on the webservers"
+  hosts: webservers
+  
+  roles:
+  - role: "galaxy-roles/ansible-role-postfix"
+    tags: "postfix"
+
+- name: "Deploy MySQL and configure the databases"
+  hosts: dbservers
+
+  pre_tasks:
+    - name: "Merge the Firewall Ports"
+      set_fact:
+        merged_firewall_allowed_tcp_ports: "{{ merged_firewall_allowed_tcp_ports | default([]) }} + {{ dbservers_firewall_allowed_tcp_ports | default([]) }}"
+        merged_firewall_additional_rules: "{{ merged_firewall_additional_rules | default([]) }} + {{ dbservers_firewall_additional_rules | default([]) }}"
+      tags: "firewall"
+
+  roles:
+    - role: "galaxy-roles/ansible-role-default-packages"
+      os_packages: "{{ dbservers_os_packages | default(omit) }}"
+      os_extra_packages: "{{ dbservers_os_extra_packages | default([]) }}"
+      tags: "default_packages"
+    
+    - role: "galaxy-roles/ansible-role-mysql"
+      tags: "mysql"
+    
+    - role: "galaxy-roles/ansible-role-firewall"
+      firewall_allowed_tcp_ports: "{{ merged_firewall_allowed_tcp_ports | default([]) | unique }}"
+      firewall_additional_rules: "{{ merged_firewall_additional_rules | default([]) }}"
+      tags: "firewall"

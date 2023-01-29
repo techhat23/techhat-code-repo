@@ -1,0 +1,27 @@
+---
+# The variables file used by the playbooks in the dbservers group.
+# These don't have to be explicitly imported by vars_files: they are autopopulated.
+
+## geerlingguy.apache role
+# Documentation: https://github.com/geerlingguy/ansible-role-apache/blob/master/README.md
+apache_vhosts_template: "{{ playbook_dir }}/templates/apache_vhosts.conf.j2"\
+
+apache_config_files: []
+#  - src: "{{ inventory_dir }}/templates/apache/conf.d/server_status.conf.j2"
+#    dest: "conf.d/server_status.conf"
+
+# Regular Virtual Hosts
+apache_vhosts:
+  # domain.com
+  - servername: "domain.com"
+    serveralias: "*.domain.com"
+    documentroot: "/home/domain.com/public_html"
+
+# SSL Virtual Hosts
+apache_vhosts_ssl:
+  # domain.com
+  - servername: "domain.com"
+    serveralias: "*.domain.com"
+    documentroot: "/home/domain.com/public_html"
+    certificate_file: "/etc/ssl/certs/domain.com.crt"
+    certificate_key_file: "/etc/ssl/private/domain.com.key"

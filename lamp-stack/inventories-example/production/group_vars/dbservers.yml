@@ -1,0 +1,35 @@
+---
+# The variables file used by the playbooks in the dbservers group.
+# These don't have to be explicitly imported by vars_files: they are autopopulated.
+
+## OS Packages
+# if you do not want to install the default packages, set dbservers_os_packages to an empty object array []
+#dbservers_os_packages: []
+dbservers_os_extra_packages: []
+
+## mysql role
+mysqlservice: mysqld
+
+mysql_port: 3306
+mysql_bind_address: "0.0.0.0"
+# CHANGE THIS!!!
+mysql_root_db_pass: "YOUR_ROOT_DB_PASSWORD"
+
+# Your MySQL Databases
+mysql_db: []
+
+# Your MySQL Users and their priviledges
+mysql_users: []
+
+# Your replication users
+mysql_repl_user: []
+
+# set to master or slave if using replication
+mysql_repl_role: ""
+mysql_db_id: 7
+
+## geerlingguy.firewall role
+# Documentation: https://github.com/geerlingguy/ansible-role-firewall/blob/master/README.md
+# All Servers have these firewall ports opened, gets merged with firewall ports in other group settings
+dbservers_firewall_allowed_tcp_ports:
+  - 3306

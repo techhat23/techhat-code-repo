@@ -1,0 +1,9 @@
+---
+# The variables file used by the playbooks in the webservers group.
+# These don't have to be explicitly imported by vars_files: they are autopopulated.
+
+# kzap.postfix
+postfix_configuration_files: []
+#  - src: "{{ inventory_dir }}/templates/postfix/main.cf.j2"
+#    dest: "main.cf"
+#    force: no
