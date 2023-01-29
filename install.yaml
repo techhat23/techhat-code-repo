@@ -23,4 +23,4 @@
     debug: msg="We are learning GIT"
 
   - name: Adding another debug statement
-    debug: msg="We are learning branching and merging"
+    debug: msg="We are learning branching and merging!"
